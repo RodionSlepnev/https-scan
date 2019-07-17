@@ -43,6 +43,9 @@ The Observatory-Scan performs the scan provided by mozilla ([observatory.mozilla
 | XFrameOptionsPassed | Is true, if XFrameOptions test was passed |
 | XFrameOptionsResult | Result of the XFrameOptions test |
 | XFrameOptionsDesc | Description of the result|
+| ReferrerPolicyPassed | Is true, if ReferrerPolicy test was passed |
+| ReferrerPolicyResult | Result of the ReferrerPolicy test |
+| ReferrerPolicyDesc | Description of the result|
 | ScanStatus | Pending: 0, Done: 1, Ignored: 2, Error: 255 |
 
  
