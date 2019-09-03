@@ -6,14 +6,15 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"io/ioutil"
+	"regexp"
+	"strings"
 
 	"../../backend"
 	"../../hooks"
 	"github.com/fatih/structs"
-	"golang.org/x/net/html"
 )
 
 // CrawlerMaxRedirects sets the maximum number of Redirects to be followed
@@ -58,7 +59,7 @@ type Config struct {
 var currentConfig = Config{
 	Retries:        3,
 	ScanType:       hooks.ScanBoth,
-	APILocation:    "https://securityheaders.io/?q=",
+	APILocation:    "https://securityheaders.com/?q=",
 	ParallelScans:  10,
 	LogLevel:       "info",
 	Hidden:         "on",
@@ -77,134 +78,110 @@ type TableRow struct {
 	ScanStatus              int
 }
 
-// parseResponse extracts the results of the securityheaders-scan out of the request response
-func parseResponse(r io.Reader) *TableRow {
-	z := html.NewTokenizer(r)
+func findRawHeader(rawHeadersText string, headerName string) string {
+	begin := strings.Index(rawHeadersText, headerName)
+	if begin == -1 {
+		return "not implemented"
+	}
+	header := rawHeadersText[begin:]
+	end := strings.Index(header, "</tr>")
+	header = header[:end]
+
+	begin = strings.Index(header, "<td")
+	header = header[begin+len("<td"):]
+
+	begin = strings.Index(header, ">")
+	header = header[begin+len(">"):]
+
+	end = strings.Index(header, "</td>")
+	header = header[:end]
+
+	//Clean results from tags
+	noTags := regexp.MustCompile("<[/A-Z-Za-z-z]+>")
+	header = noTags.ReplaceAllString(header, "")
+
+	//Only letters, numbers, "="-, "-"-signs
+	//onlyData := regexp.MustCompile("[\\*A-Z-Za-z-z0-9=-/]+")
+	onlyData := regexp.MustCompile(".*")
+	header = onlyData.FindString(header)
+
+	return header
+}
+
+func parseResponse(r io.ReadCloser) *TableRow {
 	var secH TableRow
-	isRaw := false
-	isMissing := false
 
-	for {
-		tt := z.Next()
-		switch {
-		case tt == html.ErrorToken:
-			return &secH
-		case tt == html.EndTagToken:
-			t := z.Token()
-			if t.Data == "table" {
-				if isRaw {
-					isRaw = false
-				}
-				if isMissing {
-					isMissing = false
-				}
-			}
-		case tt == html.StartTagToken:
-			t := z.Token()
-			switch {
-			case t.Data == "div":
-				hh := z.Next()
-				if hh == html.TextToken {
-					h := z.Token()
-					switch h.Data {
-					// we are in the Raw Headers now
-					case "Raw Headers":
-						isRaw = true
-						break
-					// we are in the missing headers now
-					case "Missing Headers":
-						isRaw = false
-						isMissing = true
-						break
-					}
+	bytesStream, _ := ioutil.ReadAll(r)
+	bodyContent := string(bytesStream)
 
-				}
-			case t.Data == "th":
-				hh := z.Next()
-				if hh == html.TextToken {
-					h := z.Token()
-					switch h.Data {
-					// save Results according to the current section
-					case "X-Frame-Options":
-						if isMissing {
-							secH.XFrameOptions = hooks.Truncate("missing", 300)
-							break
-						}
-						if isRaw {
-							for hh = z.Next(); hh != html.TextToken; hh = z.Next() {
-							}
-							h := z.Token()
-							secH.XFrameOptions = hooks.Truncate(h.Data, 300)
-						}
+	//for test only
+	findWebsiteb := strings.Index(bodyContent, "Security Report Summary")
+	website := bodyContent[findWebsiteb:]
+	findWebsiteb = strings.Index(website, "<a href")
+	website = website[findWebsiteb:]
+	findWebsitee := strings.Index(website, "</a>")
+	fmt.Println(website[:findWebsitee])
+	//for test only
 
-					case "Strict-Transport-Security":
-						if isMissing {
-							secH.StrictTransportSecurity = hooks.Truncate("missing", 300)
-							break
-						}
-						if isRaw {
-							for hh = z.Next(); hh != html.TextToken; hh = z.Next() {
-							}
-							h := z.Token()
-							secH.StrictTransportSecurity = hooks.Truncate(h.Data, 300)
-						}
+	beginOfReportTable := strings.Index(bodyContent, "Raw Headers")
+	rawHeaders := bodyContent[beginOfReportTable:]
+	endOfReportTable := strings.Index(rawHeaders, "</table>")
+	rawHeaders = rawHeaders[:endOfReportTable]
 
-					case "X-Content-Type-Options":
-						if isMissing {
-							secH.XContentTypeOptions = hooks.Truncate("missing", 300)
-							break
-						}
-						if isRaw {
-							for hh = z.Next(); hh != html.TextToken; hh = z.Next() {
-							}
-							h := z.Token()
-							secH.XContentTypeOptions = hooks.Truncate(h.Data, 300)
-						}
+	beginOftbody := strings.Index(rawHeaders, "<tbody>")
+	rawHeaders = rawHeaders[beginOftbody:]
+	endOftbody := strings.Index(rawHeaders, "</tbody>")
+	rawHeaders = rawHeaders[:endOftbody]
 
-					case "X-XSS-Protection":
-						if isMissing {
-							secH.XXSSProtection = hooks.Truncate("missing", 300)
-							break
-						}
-						if isRaw {
-							for hh = z.Next(); hh != html.TextToken; hh = z.Next() {
-							}
-							h := z.Token()
-							secH.XXSSProtection = hooks.Truncate(h.Data, 300)
-						}
+	s := ""
 
-					case "Content-Security-Policy":
-						if isMissing {
-							secH.ContentSecurityPolicy = hooks.Truncate("missing", 300)
-							break
-						}
-						if isRaw {
-							for hh = z.Next(); hh != html.TextToken; hh = z.Next() {
-							}
-							h := z.Token()
-							secH.ContentSecurityPolicy = hooks.Truncate(h.Data, 300)
-						}
-
-					case "Referrer-Policy":
-						if isMissing {
-							secH.ReferrerPolicy = hooks.Truncate("missing", 300)
-							break
-						}
-						if isRaw {
-							for hh = z.Next(); hh != html.TextToken; hh = z.Next() {
-							}
-							h := z.Token()
-							secH.ReferrerPolicy = hooks.Truncate(h.Data, 300)
-						}
-
-					}
-				}
-
-			}
-
-		}
+	//Find Strict-Transport-Security
+	s = findRawHeader(rawHeaders, "Strict-Transport-Security")
+	if s == "not implemented" {
+		secH.StrictTransportSecurity = hooks.Truncate("missing", 300)
+	} else {
+		secH.StrictTransportSecurity = hooks.Truncate(s, 300)
 	}
 
+	//Find X-XSS-Protection
+	s = findRawHeader(rawHeaders, "X-XSS-Protection")
+	if s == "not implemented" {
+		secH.XXSSProtection = hooks.Truncate("missing", 300)
+	} else {
+		secH.XXSSProtection = hooks.Truncate(s, 300)
+	}
+
+	//Find X-Frame-Options
+	s = findRawHeader(rawHeaders, "X-Frame-Options")
+	if s == "not implemented" {
+		secH.XFrameOptions = hooks.Truncate("missing", 300)
+	} else {
+		secH.XFrameOptions = hooks.Truncate(s, 300)
+	}
+
+	//Find Content-Security-Policy
+	s = findRawHeader(rawHeaders, "Content-Security-Policy")
+	if s == "not implemented" {
+		secH.ContentSecurityPolicy = hooks.Truncate("missing", 300)
+	} else {
+		secH.ContentSecurityPolicy = hooks.Truncate(s, 300)
+	}
+
+	//Find X-Content-Type-Options
+	s = findRawHeader(rawHeaders, "X-Content-Type-Options")
+	if s == "not implemented" {
+		secH.XContentTypeOptions = hooks.Truncate("missing", 300)
+	} else {
+		secH.XContentTypeOptions = hooks.Truncate(s, 300)
+	}
+
+	s = findRawHeader(rawHeaders, "Referrer-Policy")
+	if s == "not implemented" {
+		secH.ReferrerPolicy = hooks.Truncate("missing", 300)
+	} else {
+		secH.ReferrerPolicy = hooks.Truncate(s, 300)
+	}
+	return &secH
 }
 
 func handleScan(domains []hooks.DomainsReachable, internalChannel chan hooks.InternalMessage) []hooks.DomainsReachable {
@@ -266,15 +243,19 @@ func invokeSecurityHeaders(host string, supportsSSL bool) (TableRow, error) {
 	} else {
 		hostURL = host
 	}
-	apiURL = currentConfig.APILocation + hostURL + fmt.Sprintf("&hide=%v&followRedirects=%v", currentConfig.Hidden, currentConfig.FollowRedirect)
-
+	//apiURL = currentConfig.APILocation + hostURL + fmt.Sprintf("&hide=%v&followRedirects=%v", currentConfig.Hidden, currentConfig.FollowRedirect)
+	apiURL = currentConfig.APILocation + hostURL + fmt.Sprintf("&hide=%s&followRedirects=%s", currentConfig.Hidden, currentConfig.FollowRedirect)
+	fmt.Printf(apiURL)
+	fmt.Printf("\n")
 	// Get http Header from the securityheaders API to get the grading of the scanned host
 	response, err := http.Get(apiURL)
+
+	//temp b
+	securityheaders := parseResponse(response.Body)
+	//temp e
 	if err != nil {
 		return TableRow{}, err
 	}
-
-
 	if response.StatusCode != http.StatusOK {
 		if manager.LogLevel >= hooks.LogError {
 			log.Printf("[ERROR] securityheaders.io returned non-200 status for host %v : %v", host, response.Status)
@@ -282,19 +263,20 @@ func invokeSecurityHeaders(host string, supportsSSL bool) (TableRow, error) {
 		hooks.LogIfNeeded(manager.Logger, fmt.Sprintf("Returned non-200 status for host %v : %v", host, response.Status), manager.LogLevel, hooks.LogError)
 		err = errors.New("security Header Assessment failed")
 		io.Copy(ioutil.Discard, response.Body)
-		response.Body.Close()
+		//response.Body.Close()
 		return TableRow{}, err
 	}
 	io.Copy(ioutil.Discard, response.Body)
-	response.Body.Close()
+	//response.Body.Close()
 	// The grading done by securityheaders.io is Base64-encoded, so we decode it and get a JSON object
 	grade := response.Header.Get("X-Grade")
 	if grade == "" {
 		err := fmt.Errorf("decoding X-Grade Header from securityheaders.io")
 		return TableRow{}, err
 	}
+
 	//Parse the Results
-	securityheaders := parseResponse(response.Body)
+	//securityheaders := parseResponse(response.Body)
 
 	securityheaders.Grade = hooks.Truncate(grade, 2)
 

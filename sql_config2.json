@@ -1,0 +1,8 @@
+{
+    /*"SQLServer": "DE-3AS-BY58P72\\SQLTEST1",*/
+    "SQLServer": "127.0.0.1\\SQLTEST1", 
+    "SQLUserID": "sh_monitoring_https_dev",
+    "SQLPassword": "Z794JpACNSyTk6LL",
+    "SQLDatabase": "smarthouse_monitoring_https_dev",
+    "SQLEncryption": "disable"
+}

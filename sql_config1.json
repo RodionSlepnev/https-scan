@@ -1,0 +1,7 @@
+{
+    "SQLServer": "10.5.48.25",
+    "SQLUserID": "sh_monitoring_https_dev",
+    "SQLPassword": "SgK03bPgSyhgLwBz421t",
+    "SQLDatabase": "smarthouse_monitoring_https_dev",
+    "SQLEncryption": "disable"
+}

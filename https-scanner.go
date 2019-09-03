@@ -306,10 +306,10 @@ func main() {
 	var confContinue = flag.Bool("continue", false, "Continue the last scan")
 
 	var confList = flag.String("list", "", "Specify a ListID")
-	var confFile = flag.String("file", "", "Specify a file containing multiple domains (separated by linebreak)")
+	var confFile = flag.String("file", "domains.txt", "Specify a file containing multiple domains (separated by linebreak)")
 	var confDomain = flag.String("domain", "", "Specify a single domain")
 
-	var confScan = flag.Bool("scan", false, "Scan the given domains")
+	var confScan = flag.Bool("scan", true, "Scan the given domains")
 	var confAdd = flag.Bool("add", false, "Add the given domains to the specified ListID")
 	var confRemove = flag.Bool("remove", false, "Remove the given domains from the specified ListID")
 	var confInactive = flag.Bool("inactive", false, "Set the given domains to inactive (only active domains are scanned)")
