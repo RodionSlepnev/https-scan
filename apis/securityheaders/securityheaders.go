@@ -100,8 +100,7 @@ func findRawHeader(rawHeadersText string, headerName string) string {
 	noTags := regexp.MustCompile("<[/A-Z-Za-z-z]+>")
 	header = noTags.ReplaceAllString(header, "")
 
-	//Only letters, numbers, "="-, "-"-signs
-	//onlyData := regexp.MustCompile("[\\*A-Z-Za-z-z0-9=-/]+")
+	//Find anything
 	onlyData := regexp.MustCompile(".*")
 	header = onlyData.FindString(header)
 
@@ -113,15 +112,6 @@ func parseResponse(r io.ReadCloser) *TableRow {
 
 	bytesStream, _ := ioutil.ReadAll(r)
 	bodyContent := string(bytesStream)
-
-	//for test only
-	findWebsiteb := strings.Index(bodyContent, "Security Report Summary")
-	website := bodyContent[findWebsiteb:]
-	findWebsiteb = strings.Index(website, "<a href")
-	website = website[findWebsiteb:]
-	findWebsitee := strings.Index(website, "</a>")
-	fmt.Println(website[:findWebsitee])
-	//for test only
 
 	beginOfReportTable := strings.Index(bodyContent, "Raw Headers")
 	rawHeaders := bodyContent[beginOfReportTable:]
@@ -245,8 +235,7 @@ func invokeSecurityHeaders(host string, supportsSSL bool) (TableRow, error) {
 	}
 	//apiURL = currentConfig.APILocation + hostURL + fmt.Sprintf("&hide=%v&followRedirects=%v", currentConfig.Hidden, currentConfig.FollowRedirect)
 	apiURL = currentConfig.APILocation + hostURL + fmt.Sprintf("&hide=%s&followRedirects=%s", currentConfig.Hidden, currentConfig.FollowRedirect)
-	fmt.Printf(apiURL)
-	fmt.Printf("\n")
+
 	// Get http Header from the securityheaders API to get the grading of the scanned host
 	response, err := http.Get(apiURL)
 
