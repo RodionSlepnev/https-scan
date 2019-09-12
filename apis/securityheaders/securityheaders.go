@@ -95,28 +95,28 @@ func getTextExcerpt(tableContent string, tableName string) string {
 
 func findHeaders(rawHeadersText string, headerName string) string {
 
-	begin := strings.Index(rawHeadersText, headerName)
-	if begin == -1 {
+	textBegin := strings.Index(rawHeadersText, headerName)
+	if textBegin == -1 {
 		return "not implemented"
 	}
-	header := rawHeadersText[begin:]
-	end := strings.Index(header, "</tr>")
-	header = header[:end]
+	header := rawHeadersText[textBegin:]
+	textEnd := strings.Index(header, "</tr>")
+	header = header[:textEnd]
 
-	begin = strings.Index(header, "<td")
-	header = header[begin+len("<td"):]
+	textBegin = strings.Index(header, "<td")
+	header = header[textBegin+len("<td"):]
 
-	begin = strings.Index(header, ">")
-	header = header[begin+len(">"):]
+	textBegin = strings.Index(header, ">")
+	header = header[textBegin+len(">"):]
 
-	end = strings.Index(header, "</td>")
-	header = header[:end]
+	textEnd = strings.Index(header, "</td>")
+	header = header[:textEnd]
 
 	//Clean results from tags
 	noTags := regexp.MustCompile("<[/A-Z-Za-z-z]+>")
 	header = noTags.ReplaceAllString(header, "")
 
-	//Find anything
+	//Find header
 	onlyData := regexp.MustCompile(".*")
 	header = onlyData.FindString(header)
 
@@ -132,72 +132,72 @@ func parseResponse(r io.ReadCloser) *TableRow {
 	rawHeadersContent := getTextExcerpt(bodyContent, "Raw Headers")
 	missingHeadersContent := getTextExcerpt(bodyContent, "Missing Headers")
 
-	rh := ""
-	mh := ""
+	rawHeaders := ""
+	missingHeaders := ""
 	//Strict-Transport-Security
-	rh = findHeaders(rawHeadersContent, "Strict-Transport-Security")
-	mh = findHeaders(missingHeadersContent, "Strict-Transport-Security")
-	if rh == "not implemented" {
+	rawHeaders = findHeaders(rawHeadersContent, "Strict-Transport-Security")
+	missingHeaders = findHeaders(missingHeadersContent, "Strict-Transport-Security")
+	if rawHeaders == "not implemented" {
 		secH.StrictTransportSecurity = hooks.Truncate("missing", 300)
-	} else if mh != "not implemented" {
+	} else if missingHeaders != "not implemented" {
 		secH.StrictTransportSecurity = hooks.Truncate("missing", 300)
 	} else {
-		secH.StrictTransportSecurity = hooks.Truncate(rh, 300)
+		secH.StrictTransportSecurity = hooks.Truncate(rawHeaders, 300)
 	}
 
 	//X-XSS-Protection
-	rh = findHeaders(rawHeadersContent, "X-XSS-Protection")
-	mh = findHeaders(missingHeadersContent, "X-XSS-Protection")
-	if rh == "not implemented" {
+	rawHeaders = findHeaders(rawHeadersContent, "X-XSS-Protection")
+	missingHeaders = findHeaders(missingHeadersContent, "X-XSS-Protection")
+	if rawHeaders == "not implemented" {
 		secH.XXSSProtection = hooks.Truncate("missing", 300)
-	} else if mh != "not implemented" {
+	} else if missingHeaders != "not implemented" {
 		secH.XXSSProtection = hooks.Truncate("missing", 300)
 	} else {
-		secH.XXSSProtection = hooks.Truncate(rh, 300)
+		secH.XXSSProtection = hooks.Truncate(rawHeaders, 300)
 	}
 
 	//X-Frame-Options
-	rh = findHeaders(rawHeadersContent, "X-Frame-Options")
-	mh = findHeaders(missingHeadersContent, "X-Frame-Options")
-	if rh == "not implemented" {
+	rawHeaders = findHeaders(rawHeadersContent, "X-Frame-Options")
+	missingHeaders = findHeaders(missingHeadersContent, "X-Frame-Options")
+	if rawHeaders == "not implemented" {
 		secH.XFrameOptions = hooks.Truncate("missing", 300)
-	} else if mh != "not implemented" {
+	} else if missingHeaders != "not implemented" {
 		secH.XFrameOptions = hooks.Truncate("missing", 300)
 	} else {
-		secH.XFrameOptions = hooks.Truncate(rh, 300)
+		secH.XFrameOptions = hooks.Truncate(rawHeaders, 300)
 	}
 
 	//Content-Security-Policy
-	rh = findHeaders(rawHeadersContent, "Content-Security-Policy")
-	mh = findHeaders(missingHeadersContent, "Content-Security-Policy")
-	if rh == "not implemented" {
+	rawHeaders = findHeaders(rawHeadersContent, "Content-Security-Policy")
+	missingHeaders = findHeaders(missingHeadersContent, "Content-Security-Policy")
+	if rawHeaders == "not implemented" {
 		secH.ContentSecurityPolicy = hooks.Truncate("missing", 300)
-	} else if mh != "not implemented" {
+	} else if missingHeaders != "not implemented" {
 		secH.ContentSecurityPolicy = hooks.Truncate("missing", 300)
 	} else {
-		secH.ContentSecurityPolicy = hooks.Truncate(rh, 300)
+		secH.ContentSecurityPolicy = hooks.Truncate(rawHeaders, 300)
 	}
 
 	//X-Content-Type-Options
-	rh = findHeaders(rawHeadersContent, "X-Content-Type-Options")
-	mh = findHeaders(missingHeadersContent, "X-Content-Type-Options")
-	if rh == "not implemented" {
+	rawHeaders = findHeaders(rawHeadersContent, "X-Content-Type-Options")
+	missingHeaders = findHeaders(missingHeadersContent, "X-Content-Type-Options")
+	if rawHeaders == "not implemented" {
 		secH.XContentTypeOptions = hooks.Truncate("missing", 300)
-	} else if mh != "not implemented" {
+	} else if missingHeaders != "not implemented" {
 		secH.XContentTypeOptions = hooks.Truncate("missing", 300)
 	} else {
-		secH.XContentTypeOptions = hooks.Truncate(rh, 300)
+		secH.XContentTypeOptions = hooks.Truncate(rawHeaders, 300)
 	}
 
 	//Referrer-Policy
-	rh = findHeaders(rawHeadersContent, "Referrer-Policy")
-	mh = findHeaders(missingHeadersContent, "Referrer-Policy")
-	if rh == "not implemented" {
+	rawHeaders = findHeaders(rawHeadersContent, "Referrer-Policy")
+	missingHeaders = findHeaders(missingHeadersContent, "Referrer-Policy")
+	if rawHeaders == "not implemented" {
 		secH.ReferrerPolicy = hooks.Truncate("missing", 300)
-	} else if mh != "not implemented" {
+	} else if missingHeaders != "not implemented" {
 		secH.ReferrerPolicy = hooks.Truncate("missing", 300)
 	} else {
-		secH.ReferrerPolicy = hooks.Truncate(rh, 300)
+		secH.ReferrerPolicy = hooks.Truncate(rawHeaders, 300)
 	}
 
 	return &secH
